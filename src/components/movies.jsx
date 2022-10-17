@@ -1,10 +1,11 @@
 import React, { Component } from 'react';
 import { getMovies } from '../services/fakeMovieService';
-import Like from './common/like';
 import Pagination from './common/pagination';
 import { paginate } from '../utils/paginate';
 import List from './common/list';
 import { getGenres } from '../services/fakeGenreService';
+import MoviesTable from './moviesTable';
+import _ from 'lodash';
 
 
 class Movies extends Component {
@@ -14,10 +15,11 @@ class Movies extends Component {
     // count: getMovies().count
     pageSize: 4,
     currentPage: 1,
+    sortColumn: { path: 'title', order: 'asc'}
   }
 
   componentDidMount() {
-    const genres = [{name: 'All Genres'}, ...getGenres()]
+    const genres = [{ _id: '', name: 'All Genres'}, ...getGenres()]
     // here we are creating a new object at the beginning of the array, creating the name properties
     // and addding all genres, we are not saving it to the database at the top of the list
     this.setState({ movies: getMovies(), genres });
@@ -47,6 +49,10 @@ class Movies extends Component {
     // updated state and making sure to reset the current page if genre is selected
   };
 
+  handleSort = sortColumn => {
+    this.setState({ sortColumn });
+  };
+
 
   render() {
 
@@ -54,6 +60,7 @@ class Movies extends Component {
     const {
       pageSize,
       currentPage,
+      sortColumn,
       selectedGenre,
       movies: allMovies
     } = this.state;
@@ -64,8 +71,10 @@ class Movies extends Component {
     const filtered = selectedGenre && selectedGenre._id ? allMovies.filter( m => m.genre._id === selectedGenre._id) : allMovies;
     // calling updated state selected genre - if filter show filters movies otherwise show all movies
 
-    const movies = paginate(filtered, currentPage, pageSize);
-    // need to paginate the filtered method
+    const sorted = _.orderBy(filtered, [sortColumn.path], [sortColumn.order]);
+
+    const movies = paginate(sorted, currentPage, pageSize);
+    // need to paginate the filtered method - removed filtered and replaced with sorted
 
 
     return (
@@ -81,36 +90,13 @@ class Movies extends Component {
           </div>
           <div>
             <p>Showing {filtered.length} movies in the database </p>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Genre</th>
-                  <th>Stock</th>
-                  <th>Rate</th>
-                  <th></th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                { movies.map(movie => {
-                  return (
-                    <tr key={movie._id}>
-                      <td>{movie.title}</td>
-                      <td>{movie.genre.name}</td>
-                      <td>{movie.numberInStock}</td>
-                      <td>{movie.dailyRentalRate}</td>
-                      <td>
-                        <Like liked={movie.liked} onClick={() => this.handleLiked(movie)}/>
-                      </td>
-                      <td>
-                        <button onClick={() => this.handleDelete(movie)} className="btn btn-danger btn-sm">x</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <MoviesTable
+              movies={movies}
+              sortColumn={sortColumn}
+              onLike={this.handleLiked}
+              onDelete={this.handleDelete}
+              onSort={this.handleSort}
+            />
             <Pagination
               itemsCount={filtered.length}
               pageSize={pageSize}
